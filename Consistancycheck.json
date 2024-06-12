@@ -1,0 +1,74 @@
+# Initial consistency check of .csv files 
+import matplotlib.pyplot as plt
+import itertools
+import csv
+import os
+import pandas
+import numpy as np
+import math
+import cmath
+
+
+lent=[]
+tmin=[]
+tsamp=[]
+
+NS = 2   # Number of Sensors
+N10s = 42
+
+NS = 4
+N10s = 42
+
+for ex in range(16):
+
+    if ex==0: file_in = 'Allactivityboyang.csv'    #  261 GDH        S3
+    #if ex==1: file_in = 'Allactivityboyang2.csv'    # 
+    #if ex==2: file_in = 'AllactivityhorTan.csv'    # 
+    #if ex==3: file_in = 'AllactivityTan.csv'    # 
+    #if ex==4: file_in = 'AllactivityTan2.csv'    # 
+    #if ex==5: file_in = 'boyangsit1.csv'
+    #if ex==7: file_in = 'boyangstand.csv'
+    #if ex==8: file_in = 'boyangwalk1.csv'
+    #if ex==6: file_in = 'boyangsit2.csv'
+    #if ex==9: file_in = 'boyangwalk2.csv'
+    #if ex==10: file_in = 'emptyroom1.csv'
+    #if ex==11: file_in = 'Tansit1-1.csv'
+    #if ex==12: file_in = 'Tansit2.csv'
+    #if ex==13: file_in = 'Tanstand1-1.csv'
+    #if ex==14: file_in = 'Tanwalk1.csv'
+    #if ex==15: file_in = 'Tanwalk2.csv'
+
+    file_out = 'C:/Users/Admin/OneDrive/Desktop/Thesis work/Data Acquisition/Clean_data' + file_in
+
+    file_in = 'C:/Users/Admin/OneDrive/Desktop/Thesis work/Data Acquisition/Data_new' +file_in
+
+    # Assumes first 6 lines are correct. Further missing Lines: Will copy from last valid CSI 
+
+    t=[]
+    sens = []
+    dt = []
+    tin = []
+    with open(file_in, "r", newline='') as f_input:
+        reader = csv.reader(f_input)
+        lines = list(reader)
+        for row in lines:
+            sens.append(row[1])
+            t.append(float(row[13]))
+            dt.append(float(row[14]))
+            tin.append(float(row[15]))
+
+    t=np.array(t)
+    dt=np.array(dt)            
+    print('\nOutlyers in',file_in,'len(t):',len(t),'{:.3f} ms'.format(t[len(t)-1]),'tmax/len:{:.3f} ms;'.format(t[len(t)-1]/len(t)), 
+          'mean(dt) {:.3f} ms;'.format(np.mean(dt)),'min/max(dt)','{:.3f};'.format(np.min(dt)),'{:.3f};'.format(np.max(dt)))             
+    
+    #print('CSI\t dt_rxM\t    sensor\t time')
+    #for i in range(len(t)):            
+    #    if dt[i] > 135:
+    #        print(i, '\t{:.3f} ms;\t'.format(dt[i]), sens[i], '\t{:.3f} ms;'.format(t[i]))
+
+    print('CSI\t tin_cycle\t sensor \ttime  \tdt  \tmax(tin):',np.max(tin),'min(tin):',np.min(tin))
+    for i in range(len(t)):            
+        # if tin[i] > 215:  #NS=2
+        if tin[i] > 523:    #NS=6
+            print(i, '\t{:.3f} ms;\t'.format(tin[i]), sens[i], '\t{:.3f} ms;'.format(t[i]),'\t{:.3f} ms;'.format(dt[i]))

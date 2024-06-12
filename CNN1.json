@@ -1,0 +1,186 @@
+import numpy as np
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.utils.data import DataLoader, Dataset
+import torchvision.transforms as transforms
+import os
+from PIL import Image
+import torch.nn.functional as F
+import matplotlib.pyplot as plt
+
+
+# Define a list of crop sizes to experiment with
+crop_sizes = [16, 20, 24]
+
+# Lists to store the best accuracies for each crop size
+best_accuracies = []
+
+for crop_size in crop_sizes:
+    # Define data transformations with the current crop size
+    transform = transforms.Compose([transforms.ToTensor(), transforms.RandomCrop((crop_size, crop_size))])
+
+
+# Create new datasets and dataloaders for each crop size
+    train_dataset = CustomDataset(root="C://Users//Admin//OneDrive//Desktop//Thesis work//Temp_tanmay//data//train/", transform=transform)
+    val_dataset = CustomDataset(root="C://Users//Admin//OneDrive//Desktop//Thesis work//Temp_tanmay//data//val/", transform=transform)
+    
+    dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=True)
+    
+    # Initialize the model for each crop size
+    model = CNN()
+
+# Define your custom dataset
+class CustomDataset(Dataset):
+    def __init__(self, root, transform=None):
+
+        folders = os.listdir(root)
+        self.data = []
+        self.labels = []
+
+        self.label_map = {"empty": 0,
+                          "sit": 1,
+                          "stand": 2,
+                          "walk": 3}
+
+        for folder in folders:
+            path = os.path.join(root, folder)
+            label_folders = os.listdir(path)
+            for label_folder in label_folders:
+                label_path = os.path.join(path, label_folder)
+                for file in os.listdir(label_path):
+                    data_file = os.path.join(path, label_folder, file)
+                    if "image" in file:
+                        self.data.append(data_file)
+                        self.labels.append(label_folder)
+
+        self.transform = transform
+
+    def __len__(self):
+        return len(self.data)
+
+    def __getitem__(self, idx):
+        image_path = self.data[idx]
+        image = Image.open(image_path)
+        image = image.resize((34, 34), Image.NEAREST)
+
+        label = self.label_map[self.labels[idx]]
+
+        if self.transform:
+            image = self.transform(image)
+
+        return image, label
+
+# Define your CNN architecture
+# Define the CNN model
+class CNN(nn.Module):
+    def __init__(self):
+        super(CNN, self).__init__()
+        self.conv1 = nn.Conv2d(1, 32, kernel_size=3, padding=1)
+        self.relu = nn.ReLU()
+        self.maxpool = nn.MaxPool2d(kernel_size=2, stride=2)
+        self.fc1 = nn.Linear(32 * 12 * 12, 128)
+        self.fc2 = nn.Linear(128, 4)  # 10 output classes
+
+
+    def forward(self, x):
+        x = self.conv1(x)
+        x = self.relu(x)
+        x = self.maxpool(x)
+        x = x.view(x.size(0), -1)  # Flatten the tensor
+        x = self.fc1(x)
+        x = self.relu(x)
+        x = self.fc2(x)
+        x = F.softmax(x, dim=1)
+        return x
+
+
+# Define your data transformations and load data
+transform = transforms.Compose([transforms.ToTensor(), transforms.RandomCrop((24,24))])
+
+# Load your custom dataset here
+# Replace 'data' and 'labels' with your actual data
+train_dataset = CustomDataset(root="C://Users//Admin//OneDrive//Desktop//Thesis work//Temp_tanmay//data//train/", transform=transform)
+val_dataset = CustomDataset(root="C://Users//Admin//OneDrive//Desktop//Thesis work//Temp_tanmay//data//val/", transform=transform)
+
+# Define dataloader
+batch_size = 4
+dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+
+val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=True)
+
+# Initialize the model
+model = CNN()
+
+# Define loss function and optimizer
+criterion = nn.CrossEntropyLoss()
+optimizer = optim.Adam(model.parameters(), lr=0.0001)
+
+# Training loop
+num_epochs = 20  # Adjust as needed
+best_acc = 0
+
+# Lists to store training and validation loss values
+train_losses = []
+val_losses = []
+
+for epoch in range(num_epochs):
+    train_loss = 0
+    for i, (inputs, labels) in enumerate(dataloader):
+        optimizer.zero_grad()
+        outputs = model(inputs)
+        loss = criterion(outputs, labels)
+        train_loss += loss.item()
+        loss.backward()
+        optimizer.step()
+
+        '''if (i + 1) % 10 == 0:
+            print(f'Epoch [{epoch + 1}/{num_epochs}], Step [{i + 1}/{len(dataloader)}], Loss: {loss.item()}')'''
+
+
+    val_loss = 0
+    correct = 0
+    total = 0
+
+    for i, (inputs, labels) in enumerate(val_dataloader):
+        with torch.no_grad():
+            outputs = model(inputs)
+            loss = criterion(outputs, labels)
+            val_loss += loss.item()
+
+            total += labels.size(0)
+            _, predicted = torch.max(outputs, dim=1)
+            correct += (predicted == labels).sum().item()
+
+    accuracy = 100 * correct / total
+    
+    # Append training and validation loss values to the lists
+    train_losses.append(train_loss / len(dataloader))
+    val_losses.append(val_loss / len(val_dataloader))
+    
+    if best_acc < accuracy:
+        best_acc  = accuracy
+        
+    best_accuracies.append(best_acc)        
+
+    print(f"Epoch {epoch}, train loss: {(train_loss) / len(dataloader)}, val loss: {(val_loss) / len(val_dataloader)}, val Accuracy: {accuracy:.2f}%'")
+# Save the trained model if needed
+torch.save(model.state_dict(), 'custom_cnn_model.pth')
+print("Best acc: ", best_acc)
+# Plot training and validation loss
+plt.figure()
+plt.plot(range(num_epochs), train_losses, label="Training Loss")
+plt.plot(range(num_epochs), val_losses, label="Validation Loss")
+plt.xlabel("Epoch")
+plt.ylabel("Loss")
+plt.legend()
+plt.title("Training and Validation Loss")
+plt.show("temp.png")
+
+plt.figure()
+plt.plot(crop_sizes, best_accuracies, marker='o')
+plt.xlabel("Crop Size")
+plt.ylabel("Best Accuracy (%)")
+plt.title("Best Validation Accuracy for Different Crop Sizes")
+plt.show()

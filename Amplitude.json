@@ -1,0 +1,119 @@
+import matplotlib.pyplot as plt
+import itertools
+import csv
+import os
+import pandas
+import numpy as np
+import math
+import cmath
+from PIL import Image
+import glob
+
+from sklearn.decomposition import PCA
+
+pca = PCA(n_components = 15)
+N10s = 142
+
+
+for ex in range(1):
+
+    if ex==0: file_in = 'iAllactivityboyang.csv'    #  261 GDH        S3
+    #if ex==1: file_in = 'Allactivityboyang2.csv'    # 
+    #if ex==2: file_in = 'AllactivityhorTan.csv'    # 
+    #if ex==3: file_in = 'AllactivityTan.csv'    # 
+    #if ex==4: file_in = 'AllactivityTan2.csv'    # 
+    #if ex==5: file_in = 'boyangsit1.csv'
+    #if ex==7: file_in = 'boyangstand.csv'
+    #if ex==8: file_in = 'boyangwalk1.csv'
+    #if ex==6: file_in = 'boyangsit2.csv'
+    #if ex==9: file_in = 'boyangwalk2.csv'
+    #if ex==10: file_in = 'emptyroom1.csv'
+    #if ex==11: file_in = 'Tansit1-1.csv'
+    #if ex==12: file_in = 'Tansit2.csv'
+    #if ex==13: file_in = 'Tanstand1-1.csv'
+    #if ex==14: file_in = 'Tanwalk1.csv'
+    #if ex==15: file_in = 'Tanwalk2.csv'
+    
+    
+    file_ins = 'C://Users//Admin//OneDrive//Desktop//Thesis work//Data Acquisition//after insert&delete/' +file_in
+    file_in = 'C://Users//Admin//OneDrive//Desktop//Thesis work//Data Acquisition//clean_data/' +file_in
+
+
+x = []
+y = []
+yv= []
+ya= []
+carrier = []
+trainy=[]
+trainx=[]
+
+fig, axs = plt.subplots(2,4)
+fig.suptitle('1st CSI from Frames[0:4]')
+plt.axis('off')
+fig.set_figwidth(20)
+fig.set_figheight(10)  
+
+with open(file_in,'r') as csvfile:
+    lines = csv.reader(csvfile, delimiter=',')
+    for row in lines:
+        x.append(float(row[13]))
+        y.append(row[16])
+
+    for k in range (4):            # Total 10 seconds frames
+        CSi = []
+        CSr = []
+        NS = 5   # Number of Sensors
+        #while t(n) < 10s *
+        for j in range (N10s*k,N10s*(k+1),NS):         # One 10 seconds Frame
+            cvv=[]
+            for i in range(NS):            # shoul be 6 (sensor 11 is not delivering
+                cvv.append([float(item) for item in y[i+j][1:-1].split(',')])
+
+            cv=np.array(cvv)
+            cv=cv.flatten()            # 1080 CSI values => 1 line of CSI image
+
+            ci=cv[0:len(cv):2]         # Frame Size = [N10s/Ns,(216/2 Im,Re || Amp,Pha)*NS]
+            cr=cv[1:len(cv):2]
+
+            #ci = ci[ci != 0]  # remove '0' -> guard subcarriers
+            #cr = cr[cr != 0]  # remove '0' -> guard subcarriers
+            
+            CSi.append(ci)
+            CSr.append(cr)
+        
+        ##################################
+
+        imgI = np.array(CSi)
+        imgR = np.array(CSr)
+        aa=np.array(imgI)
+        ap=np.array(imgR)
+        li,co = imgI.shape
+
+        for i in range(li):
+            for c in range(co):
+                # print("i,c",i,c)
+                aa[i][c]=abs(complex(imgI[i,c],imgR[i,c]))
+                ap[i][c]=cmath.phase(complex(imgI[i,c],imgR[i,c]))
+         ######################################
+
+        imgp=np.array(ci)
+        realp=np.array(cr)
+
+        ###################################
+
+        imgp=np.array(aa)
+        realp=np.array(ap)
+
+        im=np.reshape(imgp[0][0:54],(54,1))
+        print(im.shape,imgp.shape,realp.shape)
+        axs[0,k].plot( np.transpose(imgp[0:4][0:54]),  label = ['0','1','2','3']) 
+        axs[0,k].legend()
+        axs[0,k].title.set_text('|CSI|')
+        #axs[0,k].axis('off')
+        axs[1,k].plot( np.transpose(realp[0:4][0:54]), label = ['0','1','2','3']) 
+        axs[1,k].legend()
+        axs[1,k].title.set_text('/CSI')
+        #axs[1,k].axis('off')
+        #axs[k//2,k%2].axis('off')
+        #print('img',imgp)
+        #print('real',realp)
